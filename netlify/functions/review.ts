@@ -147,6 +147,76 @@ async function reviewWithOpenAI(body: Required<ReviewRequest>) {
   return JSON.parse(extractOutputText(response));
 }
 
+function extractJsonObject(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const source = fenced?.[1]?.trim() || trimmed;
+  const start = source.indexOf("{");
+  const end = source.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("模型没有返回可解析的 JSON。");
+  }
+
+  return source.slice(start, end + 1);
+}
+
+async function reviewWithDashScope(body: Required<ReviewRequest>) {
+  const apiKey = getEnv("DASHSCOPE_API_KEY");
+  if (!apiKey) throw new Error("DASHSCOPE_API_KEY 未配置。");
+
+  const model = getEnv("DASHSCOPE_REVIEW_MODEL") || getEnv("DASHSCOPE_MODEL") || "qwen-plus";
+  const endpoint =
+    getEnv("DASHSCOPE_BASE_URL") || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是中国高考日语作文阅卷老师。必须只返回一个 JSON 对象，不要 Markdown，不要解释 JSON 以外的文字。",
+        },
+        {
+          role: "user",
+          content: `${buildPrompt(body)}
+
+JSON 结构必须包含：
+- score: { total, max, level, summary, majorIssues }
+- rubric: [{ name, max, score, reason }]
+- corrections: [{ category, badge, items: [{ original, wrong, problem, fix, explain }] }]
+- polish: [{ original, polished, point, reusable }]
+- modelEssay: { title, essay, explanation, improvements }
+`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+    message?: string;
+  };
+
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error?.message || payload.message || "DashScope 批改请求失败。");
+  }
+
+  const text = payload.choices?.[0]?.message?.content;
+  if (!text) throw new Error("DashScope 批改没有返回文本。");
+
+  return JSON.parse(extractJsonObject(text));
+}
+
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return methodNotAllowed();
 
@@ -163,6 +233,15 @@ export default async (req: Request, _context: Context) => {
       essay: body.essay,
       studentName: body.studentName || "",
     };
+
+    const provider = (getEnv("REVIEW_PROVIDER") || getEnv("OCR_PROVIDER") || "openai").toLowerCase();
+    if (provider === "mock") {
+      return json(mockReview(normalized.essayType, normalized.minorType));
+    }
+
+    if (provider === "dashscope" || provider === "qwen") {
+      return json(await reviewWithDashScope(normalized));
+    }
 
     if (!getEnv("OPENAI_API_KEY")) {
       return json(mockReview(normalized.essayType, normalized.minorType));
