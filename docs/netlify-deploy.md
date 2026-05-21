@@ -46,6 +46,15 @@ Site configuration → Environment variables
 | `OCR_PROVIDER` | `google` | 切换到 Google Vision |
 | `GOOGLE_VISION_API_KEY` | `xxx` | Google Vision API Key |
 
+如果使用国内模型做 OCR，推荐阿里云百炼 / 通义千问 OCR：
+
+| 变量名 | 示例值 | 说明 |
+|---|---|---|
+| `OCR_PROVIDER` | `dashscope` | 切换到阿里云百炼 OCR |
+| `DASHSCOPE_API_KEY` | `sk-xxx` | 阿里云百炼 API Key |
+| `DASHSCOPE_OCR_MODEL` | `qwen-vl-ocr-latest` | OCR 模型，可不填，默认使用该值 |
+| `DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions` | 可不填，默认使用北京地域接口 |
+
 不要把真实 API Key 写入前端代码、`netlify.toml` 或提交到仓库。
 
 ## 四、当前接口

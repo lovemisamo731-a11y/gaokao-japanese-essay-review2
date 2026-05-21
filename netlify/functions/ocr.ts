@@ -70,6 +70,56 @@ async function ocrWithGoogleVision(imageDataUrl: string) {
   return payload.responses?.[0]?.fullTextAnnotation?.text?.trim() || "";
 }
 
+async function ocrWithDashScope(imageDataUrl: string) {
+  const apiKey = getEnv("DASHSCOPE_API_KEY");
+  if (!apiKey) throw new Error("DASHSCOPE_API_KEY 未配置。");
+
+  const model = getEnv("DASHSCOPE_OCR_MODEL") || "qwen-vl-ocr-latest";
+  const endpoint =
+    getEnv("DASHSCOPE_BASE_URL") || "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                "请只识别图片中的日语手写作文正文。保留原有日语文字、标点和换行。不要批改，不要解释，不要输出中文说明。",
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageDataUrl },
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+    message?: string;
+  };
+
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error?.message || payload.message || "DashScope OCR 请求失败。");
+  }
+
+  const text = payload.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error("DashScope OCR 没有返回文本。");
+  return text;
+}
+
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return methodNotAllowed();
 
@@ -86,6 +136,10 @@ export default async (req: Request, _context: Context) => {
 
     if (provider === "google") {
       return json({ text: await ocrWithGoogleVision(body.imageDataUrl), provider: "google" });
+    }
+
+    if (provider === "dashscope" || provider === "qwen") {
+      return json({ text: await ocrWithDashScope(body.imageDataUrl), provider: "dashscope" });
     }
 
     return json({ text: await ocrWithOpenAI(body.imageDataUrl), provider: "openai" });
