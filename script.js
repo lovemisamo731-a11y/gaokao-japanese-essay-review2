@@ -54,6 +54,7 @@ const sampleData = {
 
 let hasUploadedImage = false;
 let useMockOcr = false;
+let ocrImageDataUrl = "";
 
 const sampleImage =
   "data:image/svg+xml;charset=UTF-8," +
@@ -97,6 +98,29 @@ function setOcrStatus(text, tone = "muted") {
   ocrStatus.dataset.tone = tone;
 }
 
+function compressImageDataUrl(dataUrl, maxSide = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => {
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("图片压缩失败。"));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    });
+    image.addEventListener("error", () => reject(new Error("图片读取失败。")));
+    image.src = dataUrl;
+  });
+}
+
 function previewUploadedImage(file) {
   if (!file) return;
   if (!file.type.startsWith("image/")) {
@@ -105,12 +129,21 @@ function previewUploadedImage(file) {
   }
 
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
+  reader.addEventListener("load", async () => {
     previewImage.src = reader.result;
     imagePreview.classList.remove("hidden");
     hasUploadedImage = true;
     useMockOcr = false;
-    setOcrStatus("图片已上传，可开始识别。", "ready");
+    ocrImageDataUrl = "";
+    setOcrStatus("图片已上传，正在优化识别图片...", "ready");
+
+    try {
+      ocrImageDataUrl = await compressImageDataUrl(reader.result);
+      setOcrStatus("图片已优化，可开始识别。", "ready");
+    } catch (error) {
+      ocrImageDataUrl = reader.result;
+      setOcrStatus("图片已上传，可开始识别。", "ready");
+    }
   });
   reader.readAsDataURL(file);
 }
@@ -667,19 +700,22 @@ runOcr.addEventListener("click", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        imageDataUrl: previewImage.src,
+        imageDataUrl: ocrImageDataUrl || previewImage.src,
         essayType: getEssayType(),
         minorType: getEssayType() === "minor" ? minorType.value : "",
       }),
     });
 
-    if (!response.ok) throw new Error("ocr api unavailable");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "OCR 接口请求失败。");
+    }
     const result = await response.json();
     essayInput.value = result.text || "";
     setOcrStatus(result.provider ? `识别完成：${result.provider}，请老师校对后开始批改。` : "识别完成，请老师校对后开始批改。", "success");
   } catch (error) {
     essayInput.value = getOcrDemoText();
-    setOcrStatus("真实 OCR 接口暂未连通，已填入演示识别结果。", "error");
+    setOcrStatus(`真实 OCR 未完成：${error.message} 已填入演示识别结果。`, "error");
   } finally {
     runOcr.disabled = false;
   }
@@ -701,6 +737,7 @@ loadSample.addEventListener("click", () => {
   studentName.value = type === "major" ? "高三 2 班 A12" : "高三 1 班 B06";
   hasUploadedImage = true;
   useMockOcr = true;
+  ocrImageDataUrl = sampleImage;
   imagePreview.classList.remove("hidden");
   previewImage.src = sampleImage;
   previewImage.alt = "OCR 示例图片占位";
