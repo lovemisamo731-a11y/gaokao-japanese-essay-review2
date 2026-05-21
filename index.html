@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高考日语作文批改助手</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar" aria-label="产品栏">
+        <div class="product-mark">
+          <span class="mark">日</span>
+          <div>
+            <strong>高考日语作文批改助手</strong>
+            <small>教师备课工作台</small>
+          </div>
+        </div>
+        <div class="topbar-meta" aria-label="评分标准">
+          <span>大作文 30 分</span>
+          <span>小作文 10 分</span>
+          <span>细致评分</span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="input-panel" aria-label="作文输入区">
+          <div class="brand-row">
+            <div>
+              <p class="eyebrow">批改输入</p>
+              <h1>单篇作文批改</h1>
+            </div>
+            <span class="status-pill">教师端</span>
+          </div>
+
+          <form id="essayForm" class="form-stack">
+            <fieldset class="segmented" aria-label="作文类型">
+              <legend>作文类型</legend>
+              <label>
+                <input type="radio" name="essayType" value="major" checked />
+                <span>大作文 30 分</span>
+              </label>
+              <label>
+                <input type="radio" name="essayType" value="minor" />
+                <span>小作文 10 分</span>
+              </label>
+            </fieldset>
+
+            <label class="field hidden" id="minorTypeField">
+              <span>小作文类型</span>
+              <select id="minorType">
+                <option value="便条">便条</option>
+                <option value="邮件">邮件</option>
+                <option value="通知">通知</option>
+                <option value="留言">留言</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>学生姓名或编号 <em>可选</em></span>
+              <input id="studentName" type="text" placeholder="例如：高三 2 班 A12" />
+            </label>
+
+            <label class="field">
+              <span>题目 / 写作要求</span>
+              <textarea id="prompt" rows="5" placeholder="输入作文题干、字数要求、应用文场景等"></textarea>
+            </label>
+
+            <section class="ocr-panel" aria-label="学生手写作文识别">
+              <div class="field-title">
+                <span>手写作文识别</span>
+                <em>拍照 / 扫描图</em>
+              </div>
+
+              <label class="upload-zone" id="uploadZone">
+                <input id="essayImage" type="file" accept="image/*" />
+                <strong>上传图片</strong>
+                <small>识别后进入下方校对区</small>
+              </label>
+
+              <div class="image-preview hidden" id="imagePreview">
+                <img id="previewImage" alt="学生手写作文预览" />
+              </div>
+
+              <div class="ocr-actions">
+                <button class="secondary-button" type="button" id="runOcr">识别手写日语</button>
+                <span id="ocrStatus">尚未上传图片</span>
+              </div>
+            </section>
+
+            <label class="field">
+              <span>学生作文</span>
+              <textarea id="essay" rows="9" placeholder="输入或校对学生日语作文"></textarea>
+            </label>
+
+            <div class="button-row">
+              <button class="secondary-button" type="button" id="loadSample">填入 OCR 示例</button>
+              <button class="primary-button" type="submit">开始批改</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="result-panel" aria-label="批改结果区">
+          <div class="result-header">
+            <div>
+              <p class="eyebrow">批改结果</p>
+              <h2 id="resultTitle">等待作文输入</h2>
+            </div>
+            <div class="score-meter" id="scoreMeter" aria-label="总分">
+              <strong>--</strong>
+              <span>/ 30</span>
+            </div>
+          </div>
+
+          <nav class="tabs" aria-label="结果分类">
+            <button class="tab active" type="button" data-tab="overview">评分总览</button>
+            <button class="tab" type="button" data-tab="errors">错误纠正</button>
+            <button class="tab" type="button" data-tab="polish">句子润色</button>
+            <button class="tab" type="button" data-tab="teaching">修改范文</button>
+          </nav>
+
+          <div class="tab-content active" id="overview">
+            <div class="empty-state">
+              <h3>等待作文输入</h3>
+              <p>批改结果会在这里生成。</p>
+            </div>
+          </div>
+
+          <div class="tab-content" id="errors"></div>
+          <div class="tab-content" id="polish"></div>
+          <div class="tab-content" id="teaching"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "ocrRequest": {
+    "imageDataUrl": "data:image/jpeg;base64,...",
+    "essayType": "major | minor",
+    "minorType": "便条 | 邮件 | 通知 | 留言"
+  },
+  "ocrResponse": {
+    "text": "识别出的日语作文文本",
+    "provider": "openai | google | mock"
+  },
+  "reviewRequest": {
+    "essayType": "major | minor",
+    "minorType": "便条 | 邮件 | 通知 | 留言 | 空字符串",
+    "prompt": "题目/写作要求",
+    "essay": "OCR 校对后的日语作文文本",
+    "studentName": "可选"
+  },
+  "reviewResponse": {
+    "score": {
+      "total": 24.5,
+      "max": 30,
+      "level": "良好",
+      "summary": "整体判断",
+      "majorIssues": ["主要扣分点 1", "主要扣分点 2"]
+    },
+    "rubric": [
+      {
+        "name": "助词使用",
+        "max": 4,
+        "score": 2.5,
+        "reason": "扣分原因"
+      }
+    ],
+    "corrections": [
+      {
+        "category": "助词错误",
+        "badge": "重点扣分项",
+        "items": [
+          {
+            "original": "私は友達と公園で行きます。",
+            "wrong": "で",
+            "problem": "公園で行きます",
+            "fix": "私は友達と公園へ行きます。",
+            "explain": "中文解释"
+          }
+        ]
+      }
+    ],
+    "polish": [
+      {
+        "original": "原句",
+        "polished": "润色后",
+        "point": "提升点",
+        "reusable": "可复用表达"
+      }
+    ],
+    "modelEssay": {
+      "title": "修改后的范文",
+      "essay": "完整范文",
+      "explanation": "范文说明",
+      "improvements": ["提升点 1", "提升点 2"]
+    }
+  }
+}
