@@ -14,6 +14,7 @@ const studentName = document.querySelector("#studentName");
 const resultTitle = document.querySelector("#resultTitle");
 const scoreMeter = document.querySelector("#scoreMeter");
 const loadSample = document.querySelector("#loadSample");
+const tabList = document.querySelector(".tabs");
 const tabs = document.querySelectorAll(".tab");
 const contents = document.querySelectorAll(".tab-content");
 
@@ -96,6 +97,48 @@ function getApiEssayPayload() {
 function setOcrStatus(text, tone = "muted") {
   ocrStatus.textContent = text;
   ocrStatus.dataset.tone = tone;
+}
+
+const tabStatus = document.createElement("div");
+tabStatus.className = "tab-status";
+tabStatus.setAttribute("aria-live", "polite");
+tabStatus.textContent = "当前显示：评分总览";
+tabList.insertAdjacentElement("afterend", tabStatus);
+
+function showEmptyTabState(targetId) {
+  const target = document.querySelector(`#${targetId}`);
+  if (!target || target.textContent.trim()) return;
+
+  const labels = {
+    errors: ["错误纠正", "批改完成后，这里会显示原句、问题位置和修改建议。"],
+    polish: ["句子润色", "批改完成后，这里会显示可直接讲解给学生的润色表达。"],
+    teaching: ["修改范文", "批改完成后，这里会显示保留学生原意的修改范文。"],
+  };
+  const [title, message] = labels[targetId] || ["等待内容", "批改结果会在这里生成。"];
+  target.innerHTML = `
+    <div class="empty-state compact">
+      <h3>${title}</h3>
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+function switchTab(targetId, announce = true) {
+  const target = document.querySelector(`#${targetId}`);
+  const activeTab = document.querySelector(`.tab[data-tab="${targetId}"]`);
+  if (!target || !activeTab) return;
+
+  tabs.forEach((item) => {
+    const isActive = item === activeTab;
+    item.classList.toggle("active", isActive);
+    item.setAttribute("aria-selected", String(isActive));
+  });
+  contents.forEach((item) => item.classList.toggle("active", item === target));
+  showEmptyTabState(targetId);
+
+  const label = activeTab.textContent.trim();
+  tabStatus.textContent = announce ? `已切换到：${label}` : `当前显示：${label}`;
+  target.scrollTop = 0;
 }
 
 function compressImageDataUrl(dataUrl, maxSide = 1600, quality = 0.82) {
@@ -722,12 +765,14 @@ runOcr.addEventListener("click", async () => {
 });
 
 tabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    tabs.forEach((item) => item.classList.remove("active"));
-    contents.forEach((item) => item.classList.remove("active"));
-    tab.classList.add("active");
-    document.querySelector(`#${tab.dataset.tab}`).classList.add("active");
-  });
+  tab.setAttribute("aria-selected", String(tab.classList.contains("active")));
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+});
+
+tabList.addEventListener("click", (event) => {
+  const tab = event.target.closest(".tab");
+  if (!tab) return;
+  switchTab(tab.dataset.tab);
 });
 
 loadSample.addEventListener("click", () => {
