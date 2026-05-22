@@ -433,7 +433,7 @@ function renderApiOverview(result, type, name) {
     .join("");
 
   const issues = score.majorIssues
-    .map((issue) => `<li class="issue-card"><strong>${escapeHtml(issue)}</strong><span>${escapeHtml(issue)}</span></li>`)
+    .map((issue) => `<li class="issue-card"><span>${escapeHtml(issue)}</span></li>`)
     .join("");
 
   document.querySelector("#overview").innerHTML = `
@@ -497,6 +497,16 @@ function renderErrors(type) {
 }
 
 function renderApiErrors(groups) {
+  if (!groups.length) {
+    document.querySelector("#errors").innerHTML = `
+      <div class="empty-state compact">
+        <h3>未发现可定位错误</h3>
+        <p>本栏只显示能在学生原文中定位到的错误，避免混入示例作文内容。</p>
+      </div>
+    `;
+    return;
+  }
+
   document.querySelector("#errors").innerHTML = groups
     .map(
       (group) => `
@@ -560,6 +570,16 @@ function renderPolish() {
 }
 
 function renderApiPolish(items) {
+  if (!items.length) {
+    document.querySelector("#polish").innerHTML = `
+      <div class="empty-state compact">
+        <h3>暂无可定位润色句</h3>
+        <p>本栏只显示学生原文中实际出现的句子润色，避免生成无关题材内容。</p>
+      </div>
+    `;
+    return;
+  }
+
   document.querySelector("#polish").innerHTML = `
     <ul class="polish-list">
       ${items
@@ -644,6 +664,10 @@ function renderApiModelEssay(modelEssay) {
 }
 
 function renderReviewResult(result) {
+  if (!result || result.error) {
+    throw new Error(result?.error || "批改接口返回异常。");
+  }
+
   const type = getEssayType();
   renderApiOverview(result, type, studentName.value.trim());
   renderApiErrors(result.corrections);
@@ -684,11 +708,18 @@ async function runReview(event) {
     const result = await response.json();
     renderReviewResult(result);
   } catch (error) {
-    const scores = scoreEssay(type, essay, promptText);
-    renderOverview(scores, type, studentName.value.trim());
-    renderErrors(type);
-    renderPolish();
-    renderTeaching(type);
+    resultTitle.textContent = "真实批改未完成";
+    scoreMeter.innerHTML = `<strong>--</strong><span>/ ${type === "major" ? 30 : 10}</span>`;
+    document.querySelector("#overview").innerHTML = `
+      <div class="empty-state">
+        <h3>批改接口返回异常</h3>
+        <p>${escapeHtml(error.message || "请稍后重试，或检查 Netlify Functions 日志。")}</p>
+      </div>
+    `;
+    document.querySelector("#errors").innerHTML = "";
+    document.querySelector("#polish").innerHTML = "";
+    document.querySelector("#teaching").innerHTML = "";
+    switchTab("overview", false);
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "开始批改";
