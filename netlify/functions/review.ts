@@ -194,6 +194,46 @@ function extractJsonObject(text: string) {
   return source.slice(start, end + 1);
 }
 
+function toNumber(value: unknown, fallback: number) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function clampScore(score: unknown, max: unknown) {
+  const maxNumber = Math.max(0, toNumber(max, 0));
+  const scoreNumber = toNumber(score, 0);
+  return Math.round(Math.min(Math.max(scoreNumber, 0), maxNumber) * 10) / 10;
+}
+
+function normalizeReviewResult(result: any, essayType: "major" | "minor") {
+  const maxTotal = essayType === "major" ? 30 : 10;
+  const rubric = Array.isArray(result.rubric)
+    ? result.rubric.map((item: any) => {
+        const max = Math.max(0, toNumber(item?.max, 0));
+        return {
+          ...item,
+          max,
+          score: clampScore(item?.score, max),
+        };
+      })
+    : [];
+
+  const total = Math.min(
+    maxTotal,
+    Math.round(rubric.reduce((sum: number, item: any) => sum + toNumber(item.score, 0), 0) * 10) / 10
+  );
+
+  return {
+    ...result,
+    score: {
+      ...result.score,
+      total,
+      max: maxTotal,
+    },
+    rubric,
+  };
+}
+
 async function reviewWithDashScope(body: Required<ReviewRequest>) {
   const apiKey = getEnv("DASHSCOPE_API_KEY");
   if (!apiKey) throw new Error("DASHSCOPE_API_KEY 未配置。");
@@ -240,7 +280,7 @@ async function reviewWithDashScope(body: Required<ReviewRequest>) {
   const text = payload.choices?.[0]?.message?.content;
   if (!text) throw new Error("DashScope 批改没有返回文本。");
 
-  return JSON.parse(extractJsonObject(text));
+  return normalizeReviewResult(JSON.parse(extractJsonObject(text)), body.essayType);
 }
 
 function streamJsonWhileWaiting(work: () => Promise<unknown>) {
