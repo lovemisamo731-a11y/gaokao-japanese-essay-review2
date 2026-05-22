@@ -493,6 +493,16 @@ textarea:focus {
   box-shadow: 0 2px 9px rgba(31, 41, 51, 0.08);
 }
 
+.tab-status {
+  min-height: 34px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  color: var(--blue);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .tab-content {
   display: none;
   flex: 1;
@@ -510,6 +520,10 @@ textarea:focus {
   min-height: 420px;
   text-align: center;
   color: var(--muted);
+}
+
+.empty-state.compact {
+  min-height: 260px;
 }
 
 .empty-state h3 {
